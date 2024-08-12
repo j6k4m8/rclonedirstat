@@ -1,0 +1,6 @@
+1 DIR_1/A.txt
+1 DIR_1/B.txt
+1 DIR_1/C.txt
+1 DIR_2/A.txt
+1 DIR_2/X/D.txt
+2 DIR_2/X/E.txt
