@@ -6,9 +6,7 @@ use std::cmp::max;
 use std::{path::PathBuf, process};
 use clap::{arg, Command};
 use trie_rs::iter::SearchIter;
-use trie_rs::map::Trie;
 use trie_rs::map::TrieBuilder;
-use trie_rs::try_collect::TryCollect;
 
 
 /**
@@ -24,7 +22,7 @@ use trie_rs::try_collect::TryCollect;
  *
  * Note that the sizes are right-aligned, and the file paths are left-aligned.
  */
-fn parse_input(stream: &mut dyn std::io::BufRead) -> Vec<(i64, String)> {
+fn parse_input(stream: &mut dyn std::io::BufRead) -> Vec<(u64, String)> {
     // Read the input from the user:
     let mut listing = Vec::new();
     let mut line = String::new();
@@ -33,8 +31,9 @@ fn parse_input(stream: &mut dyn std::io::BufRead) -> Vec<(i64, String)> {
         // Parse the line:
         let parts: Vec<&str> = line.trim().split(" ").collect();
         // Combine the parts after the size:
-        let path = parts[1..].join(" ");
-        let size: i64 = parts[0].parse().unwrap();
+        let path = "/".to_owned() + &parts[1..].join(" ");
+        let size = parts[0].parse::<i64>().unwrap();
+        let size = max(size as i64, 0) as u64;
         listing.push((size, path));
         line.clear();
     }
@@ -46,13 +45,14 @@ fn cli() -> Command {
     Command::new("rclonedirstat")
         .version("0.1.0")
         .about("Prints the sizes of a directory tree.")
-        .arg(arg!([file] "The file to process").default_value("-")
-            // .value_parser(clap::value_parser!(PathBuf))
-        )
         .subcommand(Command::new("sum")
             .about("Prints the sum of the sizes of the files in the directory tree."))
         .subcommand(Command::new("tree")
             .about("Prints the directory tree."))
+        .arg(arg!([file] "The file to process").default_value("-"))
+        .arg(arg!([prefix] "The prefix to search for").default_value(" "))
+        .arg(arg!(--human "Prints the sizes in human-readable format")
+)
 }
 
 fn pretty_filesize(size_bytes: u64) -> String {
@@ -60,7 +60,7 @@ fn pretty_filesize(size_bytes: u64) -> String {
     let size = size_bytes as f64;
     let i = max(0, (size.ln() / 1024_f64.ln()).floor() as i32);
     let size = size / 1024_f64.powi(i);
-    format!("{:.2} {}", size, units[i as usize])
+    format!("{:.3} {}", size, units[i as usize])
 }
 
 fn main() {
@@ -85,19 +85,29 @@ fn main() {
         listing = parse_input(&mut reader);
     }
 
-    let  prefix = "DIR_1";
+    let prefix = matches.get_one::<String>("prefix").unwrap();
+    let human = *matches.get_one::<bool>("human").unwrap();
 
     match matches.subcommand() {
         Some(("sum", _)) => {
-            let total_size: i64 = listing.iter().map(|(size, _)| size).sum();
-            println!("Total size: {}", total_size);
+            let total_size: u64 = listing
+            .iter()
+            .filter(|(_, path)| path.starts_with(prefix))
+            .map(|(size, _)| size).sum();
+            if human {
+                println!("{}", pretty_filesize(total_size as u64));
+            } else {
+                println!("{}", total_size);
+            }
         }
         Some(("tree", _)) => {
             // let trie = create_tree_from_listing(listing);
 
             let mut builder = TrieBuilder::new();
 
-            listing.iter().for_each(|(size, path)| {
+            listing.iter()
+            .filter(|(_, path)| path.starts_with(prefix))
+            .for_each(|(size, path)| {
                 let path_splits: Vec<String> = path.split("/").map(|s| s.to_string()).collect();
                 builder.push(path_splits, *size as u64);
             });
@@ -107,15 +117,14 @@ fn main() {
             // let mut search = trie.inc_search();
             let qry: Vec<String> = prefix.split("/").map(|s| s.to_string()).collect::<Vec<String>>();
             let results_iter: SearchIter<String, u64, Vec<String>, _> = trie.predictive_search(qry);
-            let mut size_sum: u64 = 0;
+            let mut size_sum: usize = 0;
             let mut fcount = 0;
-            results_iter.for_each(|(path, size)| {
-                size_sum += size;
+            results_iter.for_each(|(_path, size)| {
+                size_sum = size_sum.wrapping_add(*size as usize);
                 fcount += 1;
             });
-            println!("Total size: {}", pretty_filesize(size_sum));
+            println!("Total size: {}", pretty_filesize(size_sum as u64));
             println!("Total files: {}", fcount);
-
         }
         _ => {
             eprintln!("No subcommand provided");
