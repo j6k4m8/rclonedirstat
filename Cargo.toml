@@ -6,4 +6,4 @@ edition = "2021"
 [dependencies]
 clap = "4.5.15"
 ratatui = "0.28.0"
-trie-rs = "0.4.2"
+fstree = { path = "../fstree" }

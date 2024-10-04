@@ -1,27 +1,24 @@
+use clap::{arg, value_parser, Command};
+use fstree::{FSTreeMap, Node};
 use std::cmp::max;
 /** CLI util to tree from inputs of lines of form `#### <name>`.
  */
-
 // use std::env;
 use std::{path::PathBuf, process};
-use clap::{arg, Command};
-use trie_rs::iter::SearchIter;
-use trie_rs::map::TrieBuilder;
 
-
-/**
- * Parse the input from the user, either from a file or from stdin.
- *
- * The input should be a list of lines, where each line is a file size (in
- * bytes) and a file path, separated by a space. The file path should be the
- * full path of the file, starting from the root of the directory tree. For
- * example, the following input:
- *
- *  100 /home/user/file.txt
- * 1200 /home/user/dir/file2.txt
- *
- * Note that the sizes are right-aligned, and the file paths are left-aligned.
- */
+/// Parse the input from the user, either from a file or from stdin.
+///
+/// The input should be a list of lines, where each line is a file size (in
+/// bytes) and a file path, separated by a space. The file path should be the
+/// full path of the file, starting from the root of the directory tree. For
+/// example, the following input:
+///
+/// ```
+///  100 /home/user/file.txt
+/// 1200 /home/user/dir/file2.txt
+/// ```
+///
+/// Note that the sizes are right-aligned, and the file paths are left-aligned.
 fn parse_input(stream: &mut dyn std::io::BufRead) -> Vec<(u64, String)> {
     // Read the input from the user:
     let mut listing = Vec::new();
@@ -40,19 +37,23 @@ fn parse_input(stream: &mut dyn std::io::BufRead) -> Vec<(u64, String)> {
     listing
 }
 
-
 fn cli() -> Command {
     Command::new("rclonedirstat")
         .version("0.1.0")
         .about("Prints the sizes of a directory tree.")
-        .subcommand(Command::new("sum")
-            .about("Prints the sum of the sizes of the files in the directory tree."))
-        .subcommand(Command::new("tree")
-            .about("Prints the directory tree."))
+        .subcommand(
+            Command::new("sum")
+                .about("Prints the sum of the sizes of the files in the directory tree."),
+        )
+        .subcommand(Command::new("tree").about("Prints the directory tree."))
         .arg(arg!([file] "The file to process").default_value("-"))
         .arg(arg!([prefix] "The prefix to search for").default_value(" "))
-        .arg(arg!(--human "Prints the sizes in human-readable format")
-)
+        .arg(
+            arg!(--depth <DEPTH> "The depth of three to unfold")
+                .default_value("0")
+                .value_parser(value_parser!(usize)),
+        )
+        .arg(arg!(--human "Prints the sizes in human-readable format"))
 }
 
 fn pretty_filesize(size_bytes: u64) -> String {
@@ -72,11 +73,10 @@ fn main() {
 
     if name.is_some() && name.unwrap() != "-" {
         let path = PathBuf::from(name.unwrap());
-        let file = std::fs::File::open
-            (&path).unwrap_or_else(|_| {
-                eprintln!("Could not open file: {}", path.display());
-                process::exit(1);
-            });
+        let file = std::fs::File::open(&path).unwrap_or_else(|_| {
+            eprintln!("Could not open file: {}", path.display());
+            process::exit(1);
+        });
         let mut reader = std::io::BufReader::new(file);
         listing = parse_input(&mut reader);
     } else {
@@ -87,13 +87,15 @@ fn main() {
 
     let prefix = matches.get_one::<String>("prefix").unwrap();
     let human = *matches.get_one::<bool>("human").unwrap();
+    let depth = *matches.get_one::<usize>("depth").unwrap();
 
     match matches.subcommand() {
         Some(("sum", _)) => {
             let total_size: u64 = listing
-            .iter()
-            .filter(|(_, path)| path.starts_with(prefix))
-            .map(|(size, _)| size).sum();
+                .iter()
+                .filter(|(_, path)| path.starts_with(prefix))
+                .map(|(size, _)| size)
+                .sum();
             if human {
                 println!("{}", pretty_filesize(total_size as u64));
             } else {
@@ -103,28 +105,42 @@ fn main() {
         Some(("tree", _)) => {
             // let trie = create_tree_from_listing(listing);
 
-            let mut builder = TrieBuilder::new();
+            let mut fs: FSTreeMap<u64> = FSTreeMap::new();
 
-            listing.iter()
-            .filter(|(_, path)| path.starts_with(prefix))
-            .for_each(|(size, path)| {
-                let path_splits: Vec<String> = path.split("/").map(|s| s.to_string()).collect();
-                builder.push(path_splits, *size as u64);
-            });
+            listing
+                .iter()
+                .filter(|(_, path)| path.starts_with(prefix))
+                .filter(|(size, _)| *size > 0)
+                .for_each(|(size, path)| {
+                    // let path_splits: Vec<String> = path.split("/").map(|s| s.to_string()).collect();
+                    // builder.push(path_splits, *size as u64);
+                    fs.insert_with_parents(path, *size);
+                });
 
-            let trie = builder.build();
+            fn print_tree(node: &Box<Node<u64>>, depth: usize, max_depth: usize) {
+                if depth > max_depth {
+                    return;
+                }
 
-            // let mut search = trie.inc_search();
-            let qry: Vec<String> = prefix.split("/").map(|s| s.to_string()).collect::<Vec<String>>();
-            let results_iter: SearchIter<String, u64, Vec<String>, _> = trie.predictive_search(qry);
-            let mut size_sum: usize = 0;
-            let mut fcount = 0;
-            results_iter.for_each(|(_path, size)| {
-                size_sum = size_sum.wrapping_add(*size as usize);
-                fcount += 1;
-            });
-            println!("Total size: {}", pretty_filesize(size_sum as u64));
-            println!("Total files: {}", fcount);
+                let indent = "  ".repeat(depth);
+                println!(
+                    "{}{}: {}",
+                    indent,
+                    node.get_name(),
+                    pretty_filesize(node.value_reduce(0, |a, b| a + b))
+                );
+
+                match node.iter_children() {
+                    Ok(child_iter) => child_iter.for_each(|child| {
+                        print_tree(&child, depth + 1, max_depth);
+                    }),
+                    Err(_) => {}
+                }
+            }
+
+            for node in fs.iter_children(None).unwrap() {
+                print_tree(node, 0, depth);
+            }
         }
         _ => {
             eprintln!("No subcommand provided");
