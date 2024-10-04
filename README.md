@@ -2,7 +2,7 @@
 
 RCloneDirStat is a command-line tool for analyzing directory statistics in an [rclone](https://rclone.org/) remote. It can sum up file sizes and build a tree structure from a list of files and their sizes.
 
-It is inspired by [WinDirStat](https://windirstat.net/) and [Disk Inventory X](https://www.derlien.com/).
+It is inspired by [WinDirStat](https://windirstat.net/) and [Disk Inventory X](https://www.derlien.com/), and of course [dust](https://github.com/bootandy/dust).
 
 ## Features
 
