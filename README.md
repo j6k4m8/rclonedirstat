@@ -11,3 +11,22 @@ RCloneDirStat is a command-line tool for analyzing directory statistics in an [r
 ## Roadmap
 
 -   [ ] Navigate the tree interactively with a command-line interface
+
+## Examples
+
+Suppose you had a Google Drive remote in `rclone` called `gdrive:`. We could,
+
+-   list the contents of the remote at a resolution of top level directories,
+-   and draw a tree with size stats,
+-   and in a human-readable format
+
+```bash
+rclone ls gdrive: | cargo run - '/' --human --depth 1 tree
+```
+
+```
+: 41.266 GB
+  simple-reimann-proof.pdf: 1004.654 KB
+  spambot_source/: 60.674 KB
+  hotttt-fish-pics/: 40.205 GB
+```

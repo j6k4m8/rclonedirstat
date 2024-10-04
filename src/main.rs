@@ -46,14 +46,14 @@ fn cli() -> Command {
                 .about("Prints the sum of the sizes of the files in the directory tree."),
         )
         .subcommand(Command::new("tree").about("Prints the directory tree."))
-        .arg(arg!([file] "The file to process").default_value("-"))
-        .arg(arg!([prefix] "The prefix to search for").default_value(" "))
-        .arg(
+        .args([
+            arg!([file] "The file to process").default_value("-"),
+            arg!([prefix] "The prefix to search for").default_value(" "),
             arg!(--depth <DEPTH> "The depth of three to unfold")
                 .default_value("0")
-                .value_parser(value_parser!(usize)),
-        )
-        .arg(arg!(--human "Prints the sizes in human-readable format"))
+                .value_parser(value_parser!(usize),
+        ),
+        arg!(--human "Prints the sizes in human-readable format")])
 }
 
 fn pretty_filesize(size_bytes: u64) -> String {
