@@ -3,18 +3,15 @@
 use clap::{arg, value_parser, Command};
 use fstree::{FSTreeMap, Node};
 use std::cmp::max;
-use std::fmt::Result;
 use std::io;
 use std::{path::PathBuf, process};
 
 use ratatui::{
     crossterm::event::{self, KeyCode, KeyEventKind},
-    prelude::*,
-    style::Stylize,
-    widgets::Paragraph,
-    widgets::*,
-    DefaultTerminal,
+    // prelude::*,
+    // widgets::*,
 };
+use tui_tree_widget::{Tree, TreeItem, TreeState};
 
 /// Parse the input from the user, either from a file or from stdin.
 ///
@@ -173,66 +170,87 @@ fn main() {
     }
 }
 
-fn run_terminal(fs: &FSTreeMap<u64>, prefix: &str, depth: usize, human: bool) -> io::Result<()> {
+fn run_terminal(fs: &FSTreeMap<u64>, _prefix: &str, _depth: usize, human: bool) -> io::Result<()> {
     let mut terminal = ratatui::init();
-    let cleared = terminal.clear()?;
+    // let cleared = terminal.clear()?;
 
-    let mut state = ListState::default().with_selected(Some(0));
+    let mut entries: Vec<TreeItem<String>> = vec![];
+
+    // Instead of pushing a flat list to entries, we need to push a tree structure:
+    let _root = TreeItem::new("root".to_string(), "root", vec![]).unwrap();
+    // entries.push(root);
+
+    fn node_to_treeitem(node: &Box<Node<u64>>, human: bool) -> TreeItem<String> {
+        let size = node.value_reduce(0, |a, b| a + b);
+        let size = if human {
+            pretty_filesize(size)
+        } else {
+            size.to_string()
+        };
+        let mut children = vec![];
+
+        match node.iter_children() {
+            Ok(child_iter) => child_iter.for_each(|child| {
+                let child_name = child.get_name().to_string();
+                if !children
+                    .iter()
+                    .any(|c: &TreeItem<'_, String>| child_name.eq(c.identifier()))
+                {
+                    children.push(node_to_treeitem(&child, human));
+                } else {
+                    // panic!("Already saw {}", child_name)
+                }
+            }),
+            Err(_) => {}
+        }
+
+        let new_tree_item_result = TreeItem::new(
+            node.get_name().to_string(),
+            format!("{} ({})", node.get_name().to_string(), size),
+            children,
+        );
+        match new_tree_item_result {
+            Ok(res) => return res,
+            Err(e) => {
+                println!("{:?}", e);
+                panic!("Failed on directory / node {:?}:\n \n\n", node.get_name(),)
+            }
+        }
+    }
+
+    fs.root.iter_children().unwrap().for_each(|child| {
+        entries.push(node_to_treeitem(&child, human));
+    });
+
+    let mut tree_state: TreeState<_> = TreeState::<String>::default();
 
     loop {
         terminal.draw(|frame| {
-            let mut entries: Vec<String> = vec![];
-
-            // Recursively draw tree up to depth:
-            fn add_to_entries(
-                node: &Box<Node<u64>>,
-                depth: usize,
-                max_depth: usize,
-                entries: &mut Vec<String>,
-                human: bool,
-            ) {
-                if depth > max_depth {
-                    return;
-                }
-
-                let indent = "  ".repeat(depth);
-                let size = node.value_reduce(0, |a, b| a + b);
-                let size = if human {
-                    pretty_filesize(size)
-                } else {
-                    size.to_string()
-                };
-                entries.push(format!("{}{}: {}", indent, node.get_name(), size));
-
-                match node.iter_children() {
-                    Ok(child_iter) => child_iter.for_each(|child| {
-                        add_to_entries(&child, depth + 1, max_depth, entries, human);
-                    }),
-                    Err(_) => {}
-                }
-            }
-
-            add_to_entries(&fs.root, 0, depth, &mut entries, human);
-
-            let list = List::new(entries)
-                .block(Block::bordered().title(prefix))
-                .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
-                .highlight_symbol(">>")
-                .repeat_highlight_symbol(true);
-
-            frame.render_stateful_widget(list, frame.area(), &mut state);
+            let list = Tree::new(&entries).unwrap().highlight_style(
+                ratatui::style::Style::default().add_modifier(ratatui::style::Modifier::BOLD),
+            );
+            frame.render_stateful_widget(list, frame.area(), &mut tree_state);
         })?;
 
         if let event::Event::Key(key) = event::read().unwrap() {
             if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') {
-                return Ok(());
+                break;
             } else {
                 match key.code {
                     KeyCode::Up => {
-                        state.select_previous();
+                        tree_state.key_up();
                     }
                     KeyCode::Down => {
-                        state.select_next();
+                        tree_state.key_down();
+                    }
+                    KeyCode::Left => {
+                        tree_state.key_left();
+                    }
+                    KeyCode::Right => {
+                        tree_state.key_right();
+                    }
+                    KeyCode::Enter => {
+                        tree_state.toggle_selected();
                     }
                     _ => {}
                 }
@@ -241,4 +259,5 @@ fn run_terminal(fs: &FSTreeMap<u64>, prefix: &str, depth: usize, human: bool) ->
     }
 
     ratatui::restore();
+    return Ok(());
 }

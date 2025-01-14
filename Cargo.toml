@@ -8,3 +8,4 @@ clap = "4.5.15"
 ratatui = "0.28.1"
 fstree = { path = "../fstree" }
 crossterm = "0.28.1"
+tui-tree-widget = "0.22.0"
