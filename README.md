@@ -14,6 +14,8 @@ RCloneDirStat is a command-line tool for analyzing directory statistics in an [r
 
 ## Examples
 
+### Simple tree
+
 Suppose you had a Google Drive remote in `rclone` called `gdrive:`. We could,
 
 -   list the contents of the remote at a resolution of top level directories,
@@ -30,3 +32,25 @@ rclone ls gdrive: | cargo run - '/' --human --depth 1 tree
   spambot_source/: 60.674 KB
   hotttt-fish-pics/: 40.205 GB
 ```
+
+You might also want to save the rclone ls results to disk and then operate on them so that you don't need to pull it down fresh every time:
+
+```bash
+rclone ls gdrive: > my-rclone-ls.txt
+cargo run my-rclone-ls.txt --human --depth 2 tree
+```
+
+### Interactive tree
+
+You can also run in interactive mode by passing the `run` subcommand instead of the `tree` subcommand.
+
+In this case, depth args are ignored as you can manipulate the depth interactively.
+
+| Command                   | Shortcut         |
+| ------------------------- | ---------------- |
+| Move upward in the tree   | <kbd>↑</kbd>     |
+| Move downward in the tree | <kbd>↓</kbd>     |
+| Collapse a directory      | <kbd>←</kbd>     |
+| Expand a directory        | <kbd>→</kbd>     |
+| Select a directory        | <kbd>Enter</kbd> |
+| Quit interactive mode     | <kbd>q</kbd>     |
