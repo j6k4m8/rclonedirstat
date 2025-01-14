@@ -7,10 +7,7 @@ RCloneDirStat is a command-line tool for analyzing directory statistics in an [r
 -   [x] Sum up file sizes with an optional prefix filter.
 -   [x] Display file sizes in human-readable format (or raw byte count).
 -   [x] Build a tree structure from a list of files and their sizes
-
-## Roadmap
-
--   [ ] Navigate the tree interactively with a command-line interface
+-   [x] Navigate the tree interactively with a command-line interface
 
 ## Examples
 
