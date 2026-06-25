@@ -73,15 +73,15 @@ fn node_to_treeitem(node: &SizedNode, human: bool) -> TreeItem<'static, String> 
     node.children.iter().for_each(|child| {
         if !children
             .iter()
-            .any(|c: &TreeItem<'static, String>| child.name.eq(c.identifier()))
+            .any(|c: &TreeItem<'static, String>| child.display_name().eq(c.identifier()))
         {
             children.push(node_to_treeitem(child, human));
         }
     });
 
     TreeItem::new(
-        node.name.clone(),
-        format!("{} ({})", node.name, size),
+        node.display_name().to_string(),
+        format!("{} ({})", node.display_name(), size),
         children,
     )
     .unwrap_or_else(|err| panic!("Failed on directory / node {:?}: {err:?}", node.name))

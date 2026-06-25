@@ -7,6 +7,16 @@ pub struct SizedNode {
     pub children: Vec<SizedNode>,
 }
 
+impl SizedNode {
+    pub fn display_name(&self) -> &str {
+        if self.name.is_empty() {
+            "/"
+        } else {
+            &self.name
+        }
+    }
+}
+
 pub fn pretty_filesize(size_bytes: u64) -> String {
     if size_bytes == 0 {
         return "0.000 B".to_string();
@@ -61,7 +71,12 @@ pub fn print_tree(node: &SizedNode, depth: usize, max_depth: usize) {
     }
 
     let indent = "  ".repeat(depth);
-    println!("{}{}: {}", indent, node.name, pretty_filesize(node.size));
+    println!(
+        "{}{}: {}",
+        indent,
+        node.display_name(),
+        pretty_filesize(node.size)
+    );
 
     node.children
         .iter()
@@ -75,5 +90,16 @@ mod tests {
     #[test]
     fn pretty_filesize_handles_zero_bytes() {
         assert_eq!(pretty_filesize(0), "0.000 B");
+    }
+
+    #[test]
+    fn sized_node_displays_empty_name_as_root() {
+        let node = SizedNode {
+            name: String::new(),
+            size: 0,
+            children: vec![],
+        };
+
+        assert_eq!(node.display_name(), "/");
     }
 }
