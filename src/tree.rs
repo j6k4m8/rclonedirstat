@@ -8,6 +8,10 @@ pub struct SizedNode {
 }
 
 pub fn pretty_filesize(size_bytes: u64) -> String {
+    if size_bytes == 0 {
+        return "0.000 B".to_string();
+    }
+
     let units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
     let size = size_bytes as f64;
     let i = max(0, (size.ln() / 1024_f64.ln()).floor() as i32);
@@ -62,4 +66,14 @@ pub fn print_tree(node: &SizedNode, depth: usize, max_depth: usize) {
     node.children
         .iter()
         .for_each(|child| print_tree(child, depth + 1, max_depth));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pretty_filesize_handles_zero_bytes() {
+        assert_eq!(pretty_filesize(0), "0.000 B");
+    }
 }
