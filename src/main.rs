@@ -4,11 +4,10 @@ mod tree;
 mod tui;
 
 use clap::{arg, value_parser, Command};
-use fstree::FSTreeMap;
 use std::cmp::max;
 use std::{path::PathBuf, process};
 
-use tree::{pretty_filesize, print_tree, sized_node_from_fs};
+use tree::{build_tree, pretty_filesize, print_tree, sized_node_from_fs};
 
 /// Parse the input from the user, either from a file or from stdin.
 ///
@@ -124,17 +123,7 @@ fn main() {
             }
         }
         Some(("tree", _)) => {
-            let mut fs: FSTreeMap<u64> = FSTreeMap::new();
-
-            listing
-                .iter()
-                .filter(|(_, path)| path.starts_with(prefix))
-                .filter(|(size, _)| *size > 0)
-                .for_each(|(size, path)| {
-                    // let path_splits: Vec<String> = path.split("/").map(|s| s.to_string()).collect();
-                    // builder.push(path_splits, *size as u64);
-                    fs.insert_with_parents(path, *size);
-                });
+            let fs = build_tree(&listing, prefix);
 
             for node in fs
                 .iter_children(None)
@@ -145,17 +134,7 @@ fn main() {
             }
         }
         Some(("run", _)) => {
-            let mut fs: FSTreeMap<u64> = FSTreeMap::new();
-
-            listing
-                .iter()
-                .filter(|(_, path)| path.starts_with(prefix))
-                .filter(|(size, _)| *size > 0)
-                .for_each(|(size, path)| {
-                    // let path_splits: Vec<String> = path.split("/").map(|s| s.to_string()).collect();
-                    // builder.push(path_splits, *size as u64);
-                    fs.insert_with_parents(path, *size);
-                });
+            let fs = build_tree(&listing, prefix);
 
             if let Err(err) = tui::run_terminal(&fs, human) {
                 eprintln!("Interactive terminal failed: {err}");

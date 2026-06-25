@@ -22,11 +22,11 @@ Suppose you had a Google Drive remote in `rclone` called `gdrive:`. We could,
 -   and in a human-readable format
 
 ```bash
-rclone ls gdrive: | cargo run - '/' --human --depth 1 tree
+rclone ls gdrive: | cargo run -- - --human --depth 1 tree
 ```
 
 ```
-: 41.266 GB
+/: 41.266 GB
   simple-reimann-proof.pdf: 1004.654 KB
   spambot_source/: 60.674 KB
   hotttt-fish-pics/: 40.205 GB
@@ -36,7 +36,7 @@ You might also want to save the rclone ls results to disk and then operate on th
 
 ```bash
 rclone ls gdrive: > my-rclone-ls.txt
-cargo run my-rclone-ls.txt --human --depth 2 tree
+cargo run -- my-rclone-ls.txt --human --depth 2 tree
 ```
 
 ### Interactive tree
@@ -53,3 +53,7 @@ In this case, depth args are ignored as you can manipulate the depth interactive
 | Expand a directory        | <kbd>→</kbd>     |
 | Select a directory        | <kbd>Enter</kbd> |
 | Quit interactive mode     | <kbd>q</kbd>     |
+
+## Development
+
+This crate depends on `j6k4m8/fstree` from GitHub. Cargo fetches it automatically during builds and tests.
