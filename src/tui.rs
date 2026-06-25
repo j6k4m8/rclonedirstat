@@ -18,18 +18,21 @@ pub fn run_terminal(fs: &FSTreeMap<u64>, human: bool) -> io::Result<()> {
 
     let mut entries: Vec<TreeItem<'static, String>> = vec![];
 
-    fs.root.iter_children().unwrap().for_each(|child| {
+    for child in fs.root.iter_children().unwrap() {
         let child = sized_node_from_fs(child.as_ref());
-        entries.push(node_to_treeitem(&child, human));
-    });
+        entries.push(node_to_treeitem(&child, human)?);
+    }
 
     let mut tree_state: TreeState<_> = TreeState::<String>::default();
 
     loop {
-        terminal.draw(|frame| {
-            let list = Tree::new(&entries).unwrap().highlight_style(
+        let list = Tree::new(&entries)
+            .map_err(tree_widget_error)?
+            .highlight_style(
                 ratatui::style::Style::default().add_modifier(ratatui::style::Modifier::BOLD),
             );
+
+        terminal.draw(|frame| {
             frame.render_stateful_widget(list, frame.area(), &mut tree_state);
         })?;
 
@@ -62,7 +65,7 @@ pub fn run_terminal(fs: &FSTreeMap<u64>, human: bool) -> io::Result<()> {
     Ok(())
 }
 
-fn node_to_treeitem(node: &SizedNode, human: bool) -> TreeItem<'static, String> {
+fn node_to_treeitem(node: &SizedNode, human: bool) -> io::Result<TreeItem<'static, String>> {
     let size = if human {
         pretty_filesize(node.size)
     } else {
@@ -70,19 +73,23 @@ fn node_to_treeitem(node: &SizedNode, human: bool) -> TreeItem<'static, String> 
     };
     let mut children = vec![];
 
-    node.children.iter().for_each(|child| {
+    for child in &node.children {
         if !children
             .iter()
             .any(|c: &TreeItem<'static, String>| child.display_name().eq(c.identifier()))
         {
-            children.push(node_to_treeitem(child, human));
+            children.push(node_to_treeitem(child, human)?);
         }
-    });
+    }
 
     TreeItem::new(
         node.display_name().to_string(),
         format!("{} ({})", node.display_name(), size),
         children,
     )
-    .unwrap_or_else(|err| panic!("Failed on directory / node {:?}: {err:?}", node.name))
+    .map_err(tree_widget_error)
+}
+
+fn tree_widget_error<E: std::fmt::Debug>(err: E) -> io::Error {
+    io::Error::new(io::ErrorKind::InvalidData, format!("{err:?}"))
 }
