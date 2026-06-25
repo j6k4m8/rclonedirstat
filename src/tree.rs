@@ -1,4 +1,4 @@
-use fstree::Node;
+use fstree::{FSTreeMap, Node};
 use std::cmp::max;
 
 pub struct SizedNode {
@@ -35,6 +35,20 @@ pub fn sized_node_from_fs(node: &Node<u64>) -> SizedNode {
             }
         }
     }
+}
+
+pub fn build_tree(listing: &[(u64, String)], prefix: &str) -> FSTreeMap<u64> {
+    let mut fs: FSTreeMap<u64> = FSTreeMap::new();
+
+    listing
+        .iter()
+        .filter(|(_, path)| path.starts_with(prefix))
+        .filter(|(size, _)| *size > 0)
+        .for_each(|(size, path)| {
+            fs.insert_with_parents(path, *size);
+        });
+
+    fs
 }
 
 pub fn print_tree(node: &SizedNode, depth: usize, max_depth: usize) {
