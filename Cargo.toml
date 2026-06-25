@@ -6,6 +6,6 @@ edition = "2021"
 [dependencies]
 clap = "4.5.15"
 ratatui = "0.28.1"
-fstree = { path = "../fstree" }
+fstree = { git = "https://github.com/j6k4m8/fstree" }
 crossterm = "0.28.1"
 tui-tree-widget = "0.22.0"
