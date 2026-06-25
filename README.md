@@ -7,6 +7,7 @@ It is inspired by [WinDirStat](https://windirstat.net/) and [Disk Inventory X](h
 ## Features
 
 -   [x] Sum up file sizes with an optional prefix filter.
+-   [x] Count files with real sizes with an optional prefix filter.
 -   [x] Display file sizes in human-readable format (or raw byte count).
 -   [x] Build a tree structure from a list of files and their sizes
 -   [x] Navigate the tree interactively with a command-line interface
@@ -38,6 +39,18 @@ You might also want to save the rclone ls results to disk and then operate on th
 rclone ls gdrive: > my-rclone-ls.txt
 cargo run -- my-rclone-ls.txt --human --depth 2 tree
 ```
+
+To count files with real sizes under the default root prefix:
+
+```bash
+cargo run -- my-rclone-ls.txt count
+```
+
+Entries with negative sizes, such as Google Docs reported by `rclone ls` as `-1`, are excluded from the count.
+
+For `sum`, `--depth 0` prints a single total. Positive depth values print sums grouped by that path layer, aggregating all descendant files under each group. `--human` formats each grouped sum.
+
+For `count`, `--depth 0` prints a single total. Positive depth values print counts grouped by that path layer, aggregating all descendant files under each group. `--human` has no effect for `count` and emits a warning.
 
 ### Interactive tree
 
